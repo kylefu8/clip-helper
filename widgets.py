@@ -187,7 +187,9 @@ class VideoItemDelegate(QStyledItemDelegate):
         badge_font = font
         badge_font.setPointSize(max(8, font.pointSize() - 1))
         badge_metrics = QFontMetrics(badge_font)
-        badge_width = badge_metrics.horizontalAdvance(status) + 18
+        from i18n import tr
+        displayed_status = tr(status)
+        badge_width = badge_metrics.horizontalAdvance(displayed_status) + 18
         badge = QRectF(right - badge_width, rect.top() + 10, badge_width, 22)
         if error or status == "有问题":
             badge_color, badge_text = QColor("#592f35"), QColor("#ffb4b4")
@@ -202,7 +204,7 @@ class VideoItemDelegate(QStyledItemDelegate):
         painter.drawRoundedRect(badge, 8, 8)
         painter.setFont(badge_font)
         painter.setPen(badge_text)
-        painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, status)
+        painter.drawText(badge, Qt.AlignmentFlag.AlignCenter, displayed_status)
 
         left = rect.left() + (18 if selected else 14)
         name_width = max(20, int(badge.left() - left - 10))

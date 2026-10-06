@@ -16,6 +16,7 @@ from library import (StateStore, content_hash, default_data_directory, normalize
                      same_source, scan_directory)
 from tool_paths import resolve_tools, resource_directory
 from version import APP_NAME, VERSION
+from i18n import configure, message_box
 
 
 class JobSignals(QObject):
@@ -350,7 +351,7 @@ class Controller(QObject):
             names = "\n".join(item["name"] for item in targets[:10])
             if len(targets) > 10:
                 names += f"\n…共 {len(targets)} 条"
-            response = QMessageBox.warning(self.window, "确认替换原片",
+            response = message_box(QMessageBox.Icon.Warning, self.window, "确认替换原片",
                 f"即将替换 {len(targets)} 条原片，保留已标记的 {count} 段，可省约 {saving:.2f} GB。\n\n"
                 f"{names}\n\n"
                 "每条文件会保留原来的文件名。其余画面将永久移除，成功后不留原片副本。\n\n"
@@ -403,10 +404,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("directory", nargs="?")
     parser.add_argument("--data-dir")
+    parser.add_argument("--language", choices=("zh", "en"))
     parser.add_argument("--verify-desktop", help=argparse.SUPPRESS)
     args = parser.parse_args()
     data_directory = Path(args.data_dir) if args.data_dir else default_data_directory()
     data_directory.mkdir(parents=True, exist_ok=True)
+    configure(data_directory, args.language)
     logging.basicConfig(filename=data_directory / "app.log", level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s", encoding="utf-8")
     app = QApplication(sys.argv)
@@ -417,7 +420,7 @@ def main():
     app.setWindowIcon(QIcon(str(resource_directory() / "assets/icon.ico")))
     instance_lock = QLockFile(str(data_directory / "application.lock"))
     if not instance_lock.tryLock(0):
-        QMessageBox.information(None, "片段助手", "片段助手已经打开，请使用已有窗口。")
+        message_box(QMessageBox.Icon.Information, None, APP_NAME, "片段助手已经打开，请使用已有窗口。")
         return
     try:
         tools = resolve_tools()
@@ -440,7 +443,7 @@ def main():
         sys.exit(exit_code)
     except Exception as error:
         logging.exception("Unable to launch application")
-        QMessageBox.critical(None, "片段助手", str(error))
+        message_box(QMessageBox.Icon.Critical, None, APP_NAME, str(error))
         sys.exit(1)
 
 

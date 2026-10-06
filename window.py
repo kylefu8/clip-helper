@@ -5,6 +5,8 @@ import os
 import math
 from typing import Any
 from version import APP_NAME, VERSION
+from i18n import (get_language, localized_button, localized_label, retranslate,
+                  set_language, set_ui_text, tr)
 
 from PySide6.QtCore import QEvent, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
@@ -141,7 +143,7 @@ class TrimWindow(QMainWindow):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setWindowTitle(f"{APP_NAME} v{VERSION}")
+        set_ui_text(self, f"{APP_NAME} v{VERSION}", setter="setWindowTitle")
         self.setObjectName("trimWindow")
         self.setMinimumSize(1250, 760)
         self.resize(1540, 920)
@@ -206,15 +208,26 @@ class TrimWindow(QMainWindow):
         root_layout.setSpacing(12)
         header = QHBoxLayout()
         head = QVBoxLayout()
-        title = QLabel(f"{APP_NAME} v{VERSION}")
+        title = localized_label(f"{APP_NAME} v{VERSION}")
         title.setObjectName("windowTitle")
-        subtitle = QLabel("手动选段 · 先预览结果 · 再决定如何保存")
+        subtitle = localized_label("手动选段 · 先预览结果 · 再决定如何保存")
         subtitle.setObjectName("mutedLabel")
         head.addWidget(title)
         head.addWidget(subtitle)
         header.addLayout(head, 1)
-        local = QLabel("本机预览与处理")
+        local = localized_label("本机预览与处理")
         local.setObjectName("mutedLabel")
+        language_label = localized_label("界面语言")
+        language_label.setObjectName("mutedLabel")
+        header.addWidget(language_label)
+        self.language_combo = QComboBox()
+        self.language_combo.setObjectName("language_combo")
+        self.language_combo.addItem("中文", "zh")
+        self.language_combo.addItem("English", "en")
+        self.language_combo.setCurrentIndex(self.language_combo.findData(get_language()))
+        self.language_combo.setFixedWidth(125)
+        self.language_combo.currentIndexChanged.connect(self._change_language)
+        header.addWidget(self.language_combo)
         header.addWidget(local, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         root_layout.addLayout(header)
         columns = QHBoxLayout()
@@ -224,7 +237,7 @@ class TrimWindow(QMainWindow):
         self._build_player(columns)
         self._build_ranges(columns)
         footer = QHBoxLayout()
-        self.status_label = QLabel("选择一个目录开始")
+        self.status_label = localized_label("选择一个目录开始")
         self.status_label.setObjectName("mutedLabel")
         footer.addWidget(self.status_label, 1)
         self.progress_bar = QProgressBar()
@@ -233,11 +246,21 @@ class TrimWindow(QMainWindow):
         self.progress_bar.setFixedWidth(180)
         self.progress_bar.setVisible(False)
         footer.addWidget(self.progress_bar)
-        self.cancel_button = QPushButton("取消")
+        self.cancel_button = localized_button("取消")
         self.cancel_button.setVisible(False)
         self.cancel_button.setFixedWidth(76)
         footer.addWidget(self.cancel_button)
         root_layout.addLayout(footer)
+
+    def _change_language(self, index):
+        if self._busy:
+            self.language_combo.blockSignals(True)
+            self.language_combo.setCurrentIndex(self.language_combo.findData(get_language()))
+            self.language_combo.blockSignals(False)
+            return
+        set_language(self.language_combo.itemData(index))
+        retranslate(self)
+        self.file_list.viewport().update()
 
     def _panel(self, minimum: int, maximum: int | None = None) -> tuple[QFrame, QVBoxLayout]:
         panel = QFrame()
@@ -253,9 +276,9 @@ class TrimWindow(QMainWindow):
     def _build_library(self, columns):
         panel, layout = self._panel(275, 318)
         row = QHBoxLayout()
-        label = QLabel("视频目录")
+        label = localized_label("视频目录")
         label.setObjectName("sectionTitle")
-        self.file_count_label = QLabel("0 条")
+        self.file_count_label = localized_label("0 条")
         self.file_count_label.setObjectName("mutedLabel")
         row.addWidget(label)
         row.addStretch(1)
@@ -263,16 +286,16 @@ class TrimWindow(QMainWindow):
         layout.addLayout(row)
         self.folder_input = QLineEdit()
         self.folder_input.setObjectName("folder_input")
-        self.folder_input.setPlaceholderText("粘贴本机目录路径")
+        set_ui_text(self.folder_input, "粘贴本机目录路径", setter="setPlaceholderText")
         self.folder_input.setClearButtonEnabled(True)
         layout.addWidget(self.folder_input)
         buttons = QHBoxLayout()
-        self.choose_folder_button = QPushButton("选择目录")
+        self.choose_folder_button = localized_button("选择目录")
         self.choose_folder_button.setObjectName("choose_folder_button")
-        self.refresh_button = QPushButton("刷新")
+        self.refresh_button = localized_button("刷新")
         self.refresh_button.setObjectName("refresh_button")
         self.refresh_button.setProperty("primary", True)
-        self.refresh_button.setToolTip("重新扫描目录，保留仍存在文件的标记")
+        set_ui_text(self.refresh_button, "重新扫描目录，保留仍存在文件的标记", setter="setToolTip")
         self.open_folder_button = self.refresh_button
         buttons.addWidget(self.choose_folder_button)
         buttons.addWidget(self.open_folder_button)
@@ -287,15 +310,15 @@ class TrimWindow(QMainWindow):
         self.file_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         layout.addWidget(self.file_list, 1)
         list_actions = QHBoxLayout()
-        self.remove_files_button = QPushButton("移除所选")
+        self.remove_files_button = localized_button("移除所选")
         self.remove_files_button.setObjectName("remove_files_button")
-        self.remove_files_button.setToolTip("只从列表移除，视频文件和已保存标记保留")
-        self.restore_files_button = QPushButton("恢复移除项")
+        set_ui_text(self.remove_files_button, "只从列表移除，视频文件和已保存标记保留", setter="setToolTip")
+        self.restore_files_button = localized_button("恢复移除项")
         self.restore_files_button.setObjectName("restore_files_button")
         list_actions.addWidget(self.remove_files_button)
         list_actions.addWidget(self.restore_files_button)
         layout.addLayout(list_actions)
-        self.library_hint = QLabel("选择目录后自动列出视频；移除只影响此列表。")
+        self.library_hint = localized_label("选择目录后自动列出视频；移除只影响此列表。")
         self.library_hint.setObjectName("mutedLabel")
         self.library_hint.setWordWrap(True)
         layout.addWidget(self.library_hint)
@@ -306,16 +329,16 @@ class TrimWindow(QMainWindow):
         layout.setContentsMargins(15, 13, 15, 13)
         media_head = QHBoxLayout()
         names = QVBoxLayout()
-        self.media_title_label = QLabel("尚未选择视频")
+        self.media_title_label = localized_label("尚未选择视频")
         self.media_title_label.setObjectName("sectionTitle")
-        self.media_details_label = QLabel("选择左侧视频后可预览原片")
+        self.media_details_label = localized_label("选择左侧视频后可预览原片")
         self.media_details_label.setObjectName("mutedLabel")
         names.addWidget(self.media_title_label)
         names.addWidget(self.media_details_label)
         media_head.addLayout(names, 1)
-        self.preview_source_button = QPushButton("看原片")
+        self.preview_source_button = localized_button("看原片")
         self.preview_source_button.setVisible(False)
-        self.preview_result_button = QPushButton("看裁剪结果")
+        self.preview_result_button = localized_button("看裁剪结果")
         self.preview_result_button.setObjectName("preview_result_button")
         self.preview_result_button.setVisible(False)
         media_head.addWidget(self.preview_source_button)
@@ -334,28 +357,28 @@ class TrimWindow(QMainWindow):
         self.video_widget.setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         self.video_widget.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         stack.addWidget(self.video_widget)
-        self.stage_hint = QLabel("选择左侧视频开始预览", self.video_stage)
+        self.stage_hint = localized_label("选择左侧视频开始预览", self.video_stage)
         self.stage_hint.setObjectName("stageHint")
         self.stage_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.stage_hint.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         stack.addWidget(self.stage_hint)
         self.player.setVideoOutput(self.video_widget)
         layout.addWidget(self.video_stage, 1)
-        self.player_error_label = QLabel("")
+        self.player_error_label = localized_label("")
         self.player_error_label.setWordWrap(True)
         self.player_error_label.setStyleSheet("color:#ff9898;")
         self.player_error_label.setVisible(False)
         layout.addWidget(self.player_error_label)
 
         time_row = QHBoxLayout()
-        self.position_label = QLabel("00:00.000")
+        self.position_label = localized_label("00:00.000")
         self.position_label.setStyleSheet("font-weight:650;")
-        self.duration_label = QLabel("/ 00:00.000")
+        self.duration_label = localized_label("/ 00:00.000")
         self.duration_label.setObjectName("mutedLabel")
         time_row.addWidget(self.position_label)
         time_row.addWidget(self.duration_label)
         time_row.addStretch(1)
-        time_row.addWidget(QLabel("音量"))
+        time_row.addWidget(localized_label("音量"))
         self.volume_slider = QSlider(Qt.Orientation.Horizontal)
         self.volume_slider.setObjectName("volumeSlider")
         self.volume_slider.setRange(0, 100)
@@ -365,20 +388,20 @@ class TrimWindow(QMainWindow):
         layout.addLayout(time_row)
         self.seekbar = RangeSlider()
         self.seekbar.setObjectName("seekbar")
-        self.seekbar.setToolTip("点击或拖动跳转；色带表示保留片段")
+        set_ui_text(self.seekbar, "点击或拖动跳转；色带表示保留片段", setter="setToolTip")
         layout.addWidget(self.seekbar)
 
         transport = QHBoxLayout()
-        self.back_button = QPushButton("−5 秒")
-        self.play_button = QPushButton("播放")
+        self.back_button = localized_button("−5 秒")
+        self.play_button = localized_button("播放")
         self.play_button.setObjectName("play_button")
         self.play_button.setProperty("primary", True)
         self.play_button.setMinimumWidth(82)
-        self.previous_frame_button = QPushButton("上一帧")
+        self.previous_frame_button = localized_button("上一帧")
         self.previous_frame_button.setObjectName("previous_frame_button")
-        self.next_frame_button = QPushButton("下一帧")
+        self.next_frame_button = localized_button("下一帧")
         self.next_frame_button.setObjectName("next_frame_button")
-        self.forward_button = QPushButton("+5 秒")
+        self.forward_button = localized_button("+5 秒")
         self.speed_select = QComboBox()
         self.speed_select.setObjectName("playbackSpeed")
         for rate in (0.25, 0.5, 1.0, 1.5, 2.0, 4.0):
@@ -397,53 +420,53 @@ class TrimWindow(QMainWindow):
 
     def _build_ranges(self, columns):
         panel, layout = self._panel(310, 360)
-        title = QLabel("保留片段")
+        title = localized_label("保留片段")
         title.setObjectName("sectionTitle")
         layout.addWidget(title)
-        help_label = QLabel("I / O 设置当前片段起止。每个视频可添加多个片段，最终按原片时间顺序拼接。")
+        help_label = localized_label("I / O 设置当前片段起止。每个视频可添加多个片段，最终按原片时间顺序拼接。")
         help_label.setObjectName("mutedLabel")
         help_label.setWordWrap(True)
         layout.addWidget(help_label)
         start_row = QHBoxLayout()
-        start_row.addWidget(QLabel("开始"))
+        start_row.addWidget(localized_label("开始"))
         self.start_input = QLineEdit()
         self.start_input.setObjectName("start_input")
-        self.start_input.setPlaceholderText("分:秒.毫秒")
+        set_ui_text(self.start_input, "分:秒.毫秒", setter="setPlaceholderText")
         self.start_input.setClearButtonEnabled(True)
         start_row.addWidget(self.start_input, 1)
-        self.mark_in_button = QPushButton("标开始 I")
+        self.mark_in_button = localized_button("标开始 I")
         self.mark_in_button.setObjectName("mark_in_button")
         self.mark_in_button.setProperty("mark", True)
         start_row.addWidget(self.mark_in_button)
         layout.addLayout(start_row)
         end_row = QHBoxLayout()
-        end_row.addWidget(QLabel("结束"))
+        end_row.addWidget(localized_label("结束"))
         self.end_input = QLineEdit()
         self.end_input.setObjectName("end_input")
-        self.end_input.setPlaceholderText("分:秒.毫秒")
+        set_ui_text(self.end_input, "分:秒.毫秒", setter="setPlaceholderText")
         self.end_input.setClearButtonEnabled(True)
         end_row.addWidget(self.end_input, 1)
-        self.mark_out_button = QPushButton("标结束 O")
+        self.mark_out_button = localized_button("标结束 O")
         self.mark_out_button.setObjectName("mark_out_button")
         self.mark_out_button.setProperty("mark", True)
         end_row.addWidget(self.mark_out_button)
         layout.addLayout(end_row)
-        self.draft_status = QLabel("尚未标记当前片段")
+        self.draft_status = localized_label("尚未标记当前片段")
         self.draft_status.setWordWrap(True)
         self.draft_status.setStyleSheet("color:#94a4b5;")
         layout.addWidget(self.draft_status)
 
         draft_buttons = QHBoxLayout()
-        self.new_range_button = QPushButton("新建片段")
-        self.add_range_button = QPushButton("添加保留片段")
+        self.new_range_button = localized_button("新建片段")
+        self.add_range_button = localized_button("添加保留片段")
         self.add_range_button.setProperty("primary", True)
         draft_buttons.addWidget(self.new_range_button)
         draft_buttons.addWidget(self.add_range_button, 1)
         layout.addLayout(draft_buttons)
 
         range_title_row = QHBoxLayout()
-        range_title_row.addWidget(QLabel("已添加"))
-        self.range_count_label = QLabel("0 段")
+        range_title_row.addWidget(localized_label("已添加"))
+        self.range_count_label = localized_label("0 段")
         self.range_count_label.setObjectName("mutedLabel")
         range_title_row.addStretch(1)
         range_title_row.addWidget(self.range_count_label)
@@ -456,37 +479,37 @@ class TrimWindow(QMainWindow):
         layout.addWidget(self.range_list, 1)
 
         edit_buttons = QHBoxLayout()
-        self.play_segment_button = QPushButton("回看当前片段")
-        self.update_range_button = QPushButton("更新所选")
-        self.delete_range_button = QPushButton("删除所选")
+        self.play_segment_button = localized_button("回看当前片段")
+        self.update_range_button = localized_button("更新所选")
+        self.delete_range_button = localized_button("删除所选")
         edit_buttons.addWidget(self.play_segment_button, 1)
         edit_buttons.addWidget(self.update_range_button)
         edit_buttons.addWidget(self.delete_range_button)
         layout.addLayout(edit_buttons)
-        self.range_summary = QLabel("准备后会显示实际拼接范围和节省空间")
+        self.range_summary = localized_label("准备后会显示实际拼接范围和节省空间")
         self.range_summary.setWordWrap(True)
         self.range_summary.setObjectName("mutedLabel")
         layout.addWidget(self.range_summary)
-        self.keyframe_note = QLabel("无重编码裁剪可能从起点前最近的关键画面开始，实际范围会在准备结果中显示。")
+        self.keyframe_note = localized_label("无重编码裁剪可能从起点前最近的关键画面开始，实际范围会在准备结果中显示。")
         self.keyframe_note.setWordWrap(True)
         self.keyframe_note.setStyleSheet("color:#c0a87f; background:#29251e; border-radius:8px; padding:8px;")
         layout.addWidget(self.keyframe_note)
-        self.prepare_button = QPushButton("准备已标记的视频")
+        self.prepare_button = localized_button("准备已标记的视频")
         self.prepare_button.setObjectName("prepare_button")
         self.prepare_button.setProperty("primary", True)
         self.prepare_button.setMinimumHeight(40)
-        self.prepare_button.setToolTip("生成并验证临时结果；此步骤不会改动原片")
+        set_ui_text(self.prepare_button, "生成并验证临时结果；此步骤不会改动原片", setter="setToolTip")
         layout.addWidget(self.prepare_button)
-        self.export_button = QPushButton("保留为新文件")
+        self.export_button = localized_button("保留为新文件")
         self.export_button.setObjectName("export_button")
         self.export_button.setVisible(False)
         layout.addWidget(self.export_button)
-        self.replace_button = QPushButton("确认替换原片")
+        self.replace_button = localized_button("确认替换原片")
         self.replace_button.setObjectName("replace_button")
         self.replace_button.setProperty("danger", True)
         self.replace_button.setVisible(False)
         layout.addWidget(self.replace_button)
-        self.feedback_label = QLabel("")
+        self.feedback_label = localized_label("")
         self.feedback_label.setWordWrap(True)
         self.feedback_label.setStyleSheet("color:#ffb2a8; background:#352326; border-radius:8px; padding:8px;")
         self.feedback_label.setVisible(False)
@@ -588,15 +611,15 @@ class TrimWindow(QMainWindow):
             self.show_error("请先选择或输入视频目录。")
             return
         self._clear_error()
-        self.status_label.setText("正在读取目录…")
+        set_ui_text(self.status_label, "正在读取目录…")
         self.open_folder_requested.emit(folder)
 
     def _choose_folder(self):
         if self._busy:
             return
-        path = QFileDialog.getExistingDirectory(self, "选择视频目录", self.folder_input.text() or self._folder)
+        path = QFileDialog.getExistingDirectory(self, tr("选择视频目录"), self.folder_input.text() or self._folder)
         if path:
-            self.folder_input.setText(path)
+            set_ui_text(self.folder_input, path)
             self._open_folder()
 
     def _refresh_folder(self):
@@ -621,7 +644,7 @@ class TrimWindow(QMainWindow):
 
     def set_removed_count(self, count):
         self._removed_count = max(0, int(count))
-        self.restore_files_button.setText(f"恢复移除项（{count}）" if count else "恢复移除项")
+        set_ui_text(self.restore_files_button, f"恢复移除项（{count}）" if count else "恢复移除项")
         self._refresh_actions()
 
     def _library_context_menu(self, point):
@@ -631,17 +654,17 @@ class TrimWindow(QMainWindow):
         if row is not None and not row.isSelected():
             self.file_list.setCurrentItem(row)
         menu = QMenu(self)
-        remove = menu.addAction("从列表移除所选视频")
+        remove = menu.addAction(tr("从列表移除所选视频"))
         remove.setEnabled(bool(self.file_list.selectedItems()))
         remove.triggered.connect(self._remove_selected_files)
-        restore = menu.addAction("恢复已移除视频")
+        restore = menu.addAction(tr("恢复已移除视频"))
         restore.setEnabled(bool(self._removed_count))
         restore.triggered.connect(self._restore_files)
         menu.exec(self.file_list.viewport().mapToGlobal(point))
 
     def set_library(self, folder: str, items: list[dict[str, Any]], selected_path: str | None = None):
         self._folder = folder or ""
-        self.folder_input.setText(self._folder)
+        set_ui_text(self.folder_input, self._folder)
         self._items.clear()
         self._path_lookup.clear()
         self._rows.clear()
@@ -672,18 +695,18 @@ class TrimWindow(QMainWindow):
             self._rows[key] = row
             self._refresh_row(path)
         self.file_list.blockSignals(False)
-        self.file_count_label.setText(f"{len(self._items)} 条")
+        set_ui_text(self.file_count_label, f"{len(self._items)} 条")
         if not self._items:
             self._selected_path = None
             self.release_media()
-            self.media_title_label.setText("尚未选择视频")
-            self.media_details_label.setText("选择左侧视频后可预览原片")
-            self.library_hint.setText("目录中没有可播放的视频。可选择其他目录。")
+            set_ui_text(self.media_title_label, "尚未选择视频")
+            set_ui_text(self.media_details_label, "选择左侧视频后可预览原片")
+            set_ui_text(self.library_hint, "目录中没有可播放的视频。可选择其他目录。")
             self._refresh_ranges(None)
-            self.status_label.setText("目录中没有可播放的视频")
+            set_ui_text(self.status_label, "目录中没有可播放的视频")
             self._refresh_actions()
             return
-        self.library_hint.setText("单击视频预览；右键或按 Delete 从列表移除。文件和标记仍保留。")
+        set_ui_text(self.library_hint, "单击视频预览；右键或按 Delete 从列表移除。文件和标记仍保留。")
         path = self._source_path(selected_path) if selected_path else None
         path = path or next(iter(self._items))
         row = self._rows[canonical(path)]
@@ -691,7 +714,7 @@ class TrimWindow(QMainWindow):
         self.file_list.setCurrentItem(row)
         self.file_list.blockSignals(False)
         self._select_source(path)
-        self.status_label.setText(f"已读取 {len(self._items)} 条视频")
+        set_ui_text(self.status_label, f"已读取 {len(self._items)} 条视频")
         self._clear_error()
 
     def update_item(self, path: str, **changes: Any):
@@ -735,12 +758,12 @@ class TrimWindow(QMainWindow):
         self.progress_bar.setVisible(self._busy)
         if self._busy:
             self.progress_bar.setRange(0, 0)
-            self.status_label.setText(message or "正在处理…")
+            set_ui_text(self.status_label, message or "正在处理…")
         else:
             self.progress_bar.setRange(0, 1)
             self.progress_bar.setValue(0)
             if message:
-                self.status_label.setText(message)
+                set_ui_text(self.status_label, message)
         self._refresh_actions()
 
     def set_progress(self, done: int, total: int, message: str):
@@ -750,12 +773,12 @@ class TrimWindow(QMainWindow):
         else:
             self.progress_bar.setRange(0, 0)
         if message:
-            self.status_label.setText(message)
+            set_ui_text(self.status_label, message)
 
     def show_error(self, message: str):
-        self.feedback_label.setText(message or "操作未完成。")
+        set_ui_text(self.feedback_label, message or "操作未完成。")
         self.feedback_label.setVisible(True)
-        self.status_label.setText("操作未完成，请查看提示")
+        set_ui_text(self.status_label, "操作未完成，请查看提示")
 
     def load_item(self, path: str):
         if not path:
@@ -791,16 +814,16 @@ class TrimWindow(QMainWindow):
         self.player.setSource(QUrl.fromLocalFile(os.path.abspath(path)))
         self.player.setPosition(0)
         if candidate:
-            self.media_title_label.setText(f"裁剪结果 · {os.path.basename(path)}")
-            self.media_details_label.setText("临时结果预览；原片尚未替换")
+            set_ui_text(self.media_title_label, f"裁剪结果 · {os.path.basename(path)}")
+            set_ui_text(self.media_details_label, "临时结果预览；原片尚未替换")
             self._stage_hint("正在打开裁剪结果…")
         elif item:
-            self.media_title_label.setText(f"原片 · {item.get('name', os.path.basename(path))}")
+            set_ui_text(self.media_title_label, f"原片 · {item.get('name', os.path.basename(path))}")
             self._refresh_media_details()
             self._stage_hint("正在打开原片…")
         else:
-            self.media_title_label.setText(os.path.basename(path))
-            self.media_details_label.setText("本机视频预览")
+            set_ui_text(self.media_title_label, os.path.basename(path))
+            set_ui_text(self.media_details_label, "本机视频预览")
             self._stage_hint("正在打开视频…")
         if item and not candidate:
             self._set_draft(item.get("draft_start_ms"), item.get("draft_end_ms"), update_item=False)
@@ -908,7 +931,7 @@ class TrimWindow(QMainWindow):
         else:
             self._range_index = None
             self.range_list.setCurrentRow(-1)
-        self.range_count_label.setText(f"{len(ranges)} 段")
+        set_ui_text(self.range_count_label, f"{len(ranges)} 段")
         self.range_list.blockSignals(False)
 
     def _range_selected(self, current, previous):
@@ -962,7 +985,7 @@ class TrimWindow(QMainWindow):
             edit.setProperty("invalid", True)
             edit.style().unpolish(edit)
             edit.style().polish(edit)
-            self.draft_status.setText(str(exc))
+            set_ui_text(self.draft_status, str(exc))
             self.draft_status.setStyleSheet("color:#ff9898;")
             return
         if which == "start":
@@ -991,8 +1014,8 @@ class TrimWindow(QMainWindow):
     def _show_draft_fields(self):
         self.start_input.blockSignals(True)
         self.end_input.blockSignals(True)
-        self.start_input.setText(fmt(self._draft_start))
-        self.end_input.setText(fmt(self._draft_end))
+        set_ui_text(self.start_input, fmt(self._draft_start))
+        set_ui_text(self.end_input, fmt(self._draft_end))
         for edit in (self.start_input, self.end_input):
             edit.setProperty("invalid", False)
             edit.style().unpolish(edit)
@@ -1097,19 +1120,19 @@ class TrimWindow(QMainWindow):
 
     def _refresh_draft_status(self):
         if self._preview_candidate:
-            self.draft_status.setText("当前正在预览裁剪结果；回到原片后可修改标记。")
+            set_ui_text(self.draft_status, "当前正在预览裁剪结果；回到原片后可修改标记。")
             self.draft_status.setStyleSheet("color:#76d7c3;")
         elif self._draft_start is None and self._draft_end is None:
-            self.draft_status.setText("尚未标记当前片段")
+            set_ui_text(self.draft_status, "尚未标记当前片段")
             self.draft_status.setStyleSheet("color:#94a4b5;")
         elif self._draft_start is None or self._draft_end is None:
-            self.draft_status.setText("还需设置另一个时间点")
+            set_ui_text(self.draft_status, "还需设置另一个时间点")
             self.draft_status.setStyleSheet("color:#e8bc77;")
         elif int(self._draft_start) >= int(self._draft_end):
-            self.draft_status.setText("结束必须晚于开始")
+            set_ui_text(self.draft_status, "结束必须晚于开始")
             self.draft_status.setStyleSheet("color:#ff9898;")
         else:
-            self.draft_status.setText(f"当前片段 {fmt(self._draft_start)} → {fmt(self._draft_end)}")
+            set_ui_text(self.draft_status, f"当前片段 {fmt(self._draft_start)} → {fmt(self._draft_end)}")
             self.draft_status.setStyleSheet("color:#8bd9c7;")
 
     def _position_changed(self, position):
@@ -1231,8 +1254,8 @@ class TrimWindow(QMainWindow):
 
     def _playback_changed(self, state):
         playing = state == QMediaPlayer.PlaybackState.PlayingState
-        self.play_button.setText("暂停" if playing else "播放")
-        self.play_button.setToolTip("空格暂停" if playing else "空格播放")
+        set_ui_text(self.play_button, "暂停" if playing else "播放")
+        set_ui_text(self.play_button, "空格暂停" if playing else "空格播放", setter="setToolTip")
 
     def _speed_changed(self, index):
         rate = self.speed_select.itemData(index)
@@ -1260,17 +1283,17 @@ class TrimWindow(QMainWindow):
 
     def _media_error(self, error, text):
         del error
-        self.player_error_label.setText(text or "无法播放此视频；请检查文件或系统编码支持。")
+        set_ui_text(self.player_error_label, text or "无法播放此视频；请检查文件或系统编码支持。")
         self.player_error_label.setVisible(True)
         self._stage_hint("无法播放此视频")
 
     def _stage_hint(self, text):
-        self.stage_hint.setText(text)
+        set_ui_text(self.stage_hint, text)
         self.stage_hint.setVisible(bool(text))
 
     def _set_time_labels(self, position):
-        self.position_label.setText(fmt(int(position)))
-        self.duration_label.setText(f"/ {fmt(self._duration_ms)}")
+        set_ui_text(self.position_label, fmt(int(position)))
+        set_ui_text(self.duration_label, f"/ {fmt(self._duration_ms)}")
 
     def _refresh_media_details(self):
         item = self._current_item()
@@ -1288,7 +1311,7 @@ class TrimWindow(QMainWindow):
             parts.append(str(item["codec"]))
         if item.get("duration_ms"):
             parts.append(fmt(item["duration_ms"]))
-        self.media_details_label.setText("  ·  ".join(parts) or "本机原片预览")
+        set_ui_text(self.media_details_label, "  ·  ".join(parts) or "本机原片预览")
 
     def _refresh_row(self, path):
         item = self._items.get(path)
@@ -1307,14 +1330,14 @@ class TrimWindow(QMainWindow):
     def _refresh_summary(self):
         item = self._current_item()
         if not item:
-            self.range_summary.setText("准备后会显示实际拼接范围和节省空间")
+            set_ui_text(self.range_summary, "准备后会显示实际拼接范围和节省空间")
             self._refresh_draft_status()
             return
         ranges = self._ranges(item)
         total_duration = sum(r["end_ms"] - r["start_ms"] for r in ranges)
         result = item.get("result") or {}
         if item.get("fingerprint_pending"):
-            self.range_summary.setText("正在读取素材，可先观看视频，完成后即可标记。")
+            set_ui_text(self.range_summary, "正在读取素材，可先观看视频，完成后即可标记。")
         elif item.get("state") == "prepared" and result.get("verified"):
             actual_ranges = result.get("actual_ranges") or []
             if actual_ranges:
@@ -1323,16 +1346,16 @@ class TrimWindow(QMainWindow):
                 actual = f"{fmt(result['actual_start_ms'])} → {fmt(result['actual_end_ms'])}"
             else:
                 actual = f"{len(ranges)} 段，实际范围待核对"
-            self.range_summary.setText(f"实际拼接范围\n{actual}\n可省 {human_size(result.get('saved_bytes'))} · 结果 {human_size(result.get('candidate_size_bytes'))}")
+            set_ui_text(self.range_summary, f"实际拼接范围\n{actual}\n可省 {human_size(result.get('saved_bytes'))} · 结果 {human_size(result.get('candidate_size_bytes'))}")
         elif ranges:
             saved = 0
             duration = int(item.get("duration_ms") or self._duration_ms or 0)
             size = int(item.get("size_bytes") or 0)
             if duration:
                 saved = int(size * max(0.0, 1.0 - total_duration / duration))
-            self.range_summary.setText(f"已添加 {len(ranges)} 段 · 共保留 {fmt(total_duration)}\n预计可省 {human_size(saved)}")
+            set_ui_text(self.range_summary, f"已添加 {len(ranges)} 段 · 共保留 {fmt(total_duration)}\n预计可省 {human_size(saved)}")
         else:
-            self.range_summary.setText("添加保留片段后，会显示预计节省空间")
+            set_ui_text(self.range_summary, "添加保留片段后，会显示预计节省空间")
         self._refresh_draft_status()
 
     def _mark_controls(self, enabled):
@@ -1361,26 +1384,27 @@ class TrimWindow(QMainWindow):
         has_result = bool(result.get("verified") and result.get("candidate_path"))
         self.preview_result_button.setVisible(has_result and not self._preview_candidate and not self._media_released)
         show_source = bool(self._selected_path and (self._preview_candidate or self._media_released))
-        self.preview_source_button.setText("看原片" if self._preview_candidate else "重新打开原片")
+        set_ui_text(self.preview_source_button, "看原片" if self._preview_candidate else "重新打开原片")
         self.preview_source_button.setVisible(show_source)
         self.preview_result_button.setEnabled(not self._busy)
         self.preview_source_button.setEnabled(not self._busy)
 
     def _refresh_actions(self):
+        self.language_combo.setEnabled(not self._busy)
         self.remove_files_button.setEnabled(bool(self.file_list.selectedItems()) and not self._busy)
         self.restore_files_button.setEnabled(bool(self._folder and self._removed_count) and not self._busy)
         self._refresh_transport()
         self._mark_controls(not self._busy and not self._preview_candidate)
         marked, prepared = self._valid_marked_paths(), self._prepared_items()
         self.prepare_button.setEnabled(bool(marked) and not self._busy)
-        self.prepare_button.setText(f"准备已标记的视频（{len(marked)}）" if marked else "准备已标记的视频")
+        set_ui_text(self.prepare_button, f"准备已标记的视频（{len(marked)}）" if marked else "准备已标记的视频")
         self.export_button.setVisible(bool(prepared))
         self.replace_button.setVisible(bool(prepared))
         self.export_button.setEnabled(bool(prepared) and not self._busy)
         self.replace_button.setEnabled(bool(prepared) and not self._busy)
         if prepared:
-            self.export_button.setText(f"保留为新文件（{len(prepared)}）")
-            self.replace_button.setText(f"确认替换原片（{len(prepared)}）")
+            set_ui_text(self.export_button, f"保留为新文件（{len(prepared)}）")
+            set_ui_text(self.replace_button, f"确认替换原片（{len(prepared)}）")
         self._refresh_preview_buttons()
 
     def _refresh_transport(self):
@@ -1422,7 +1446,7 @@ class TrimWindow(QMainWindow):
             self.commit_requested.emit(mode, paths)
 
     def _clear_error(self):
-        self.feedback_label.setText("")
+        set_ui_text(self.feedback_label, "")
         self.feedback_label.setVisible(False)
 
     def closeEvent(self, event):  # noqa: N802 - Qt override

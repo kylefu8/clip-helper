@@ -93,6 +93,9 @@ if __name__ == "__main__":
                     "--distpath", str(distribution), "--workpath", "work/pyinstaller",
                     "--specpath", "work", str(ROOT / "main.py")], cwd=ROOT, check=True)
     shutil.copy2(ROOT / "使用说明.md", distribution / "片段助手" / "使用说明.md")
+    for name in ("User Guide.md", "README.md", "README.en.md", "CHANGELOG.md"):
+        if (ROOT / name).is_file():
+            shutil.copy2(ROOT / name, distribution / "片段助手" / name)
     # Qt imports Windows' unversioned ICU API. PATH can contain Poppler's
     # incompatible versioned ICU DLL, which PyInstaller mistakenly collects.
     # Keep Windows' system ICU and avoid shadowing it in the application.

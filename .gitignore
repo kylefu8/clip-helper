@@ -7,4 +7,5 @@ __pycache__/
 *.log
 application.lock
 marks*.json
+preferences.ini
 .片段助手缓存/

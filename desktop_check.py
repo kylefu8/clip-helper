@@ -3,20 +3,27 @@ from __future__ import annotations
 
 import json
 import time
+import copy
+import faulthandler
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QTimer, Qt, QEvent, QPointF
 from PySide6.QtGui import QKeyEvent, QMouseEvent
 from PySide6.QtMultimedia import QAudioBufferOutput
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from library import content_hash, path_key
+from i18n import get_language, tr
 
 
 class DesktopCheck(QObject):
     def __init__(self, app, controller, window, report):
         super().__init__(window)
         self.app, self.controller, self.window, self.report = app, controller, window, report
+        report.parent.mkdir(parents=True, exist_ok=True)
+        self.trace_file = report.with_suffix(".trace.log").open("w", encoding="utf-8")
+        faulthandler.dump_traceback_later(45, repeat=True, file=self.trace_file)
+        self.last_checkpoint = None
         self.phase = "scan"
         self.stats = dict(passed=False, frames=0, audio_buffers=0, errors=[])
         range_plan = report.with_suffix(".ranges.json")
@@ -50,6 +57,10 @@ class DesktopCheck(QObject):
 
     def tick(self):
         try:
+            if self.phase != self.last_checkpoint:
+                self.last_checkpoint = self.phase
+                self.report.with_suffix(".progress.json").write_text(
+                    json.dumps(dict(self.stats, phase=self.phase), ensure_ascii=False, indent=2), encoding="utf-8")
             if time.monotonic() > self.deadline:
                 raise RuntimeError(f"Desktop check timed out in {self.phase}")
             if self.controller.job:
@@ -70,6 +81,8 @@ class DesktopCheck(QObject):
                 self.stats.update(file_count=self.window.file_list.count(), source_path=str(self.source),
                                   window_visible=self.window.isVisible(), window_title=self.window.windowTitle(),
                                   application_version=self.app.applicationVersion(), tool_paths=self.controller.tools)
+                if self.fixture:
+                    self.check_language_switch()
                 self.window.audio_output.setVolume(0.01)
                 if self.profile_plan:
                     self.start_profile_check()
@@ -157,6 +170,7 @@ class DesktopCheck(QObject):
                     raise RuntimeError(item.get("error") or "Prepare button did not produce a candidate")
                 self.prepared = item["result"]
                 self.stats["prepared_ranges"] = self.prepared["actual_ranges"]
+                self.check_confirmation()
                 self.stats["source_frames"] = self.stats["frames"]
                 self.window.preview_result_button.click()
                 if not self.window.preview_is_candidate:
@@ -193,6 +207,59 @@ class DesktopCheck(QObject):
     def inventory(directory):
         return {str(path): (path.stat().st_size, path.stat().st_mtime_ns)
                 for path in directory.iterdir() if path.is_file()}
+
+    def check_language_switch(self):
+        """Switch the real window without reloading its media or saved marks."""
+        original = get_language()
+        media = self.window.player.source()
+        position = self.window.player.position()
+        playback = self.window.player.playbackState()
+        selected = self.window.file_list.currentItem()
+        items = copy.deepcopy(self.controller.items)
+        saved = copy.deepcopy(self.controller.store.data)
+        draft = (self.window.start_input.text(), self.window.end_input.text())
+        for language in ("en" if original == "zh" else "zh", original):
+            self.window.language_combo.setCurrentIndex(self.window.language_combo.findData(language))
+            if (self.window.player.source() != media or self.window.player.position() != position
+                    or self.window.player.playbackState() != playback
+                    or self.window.file_list.currentItem() is not selected
+                    or self.controller.items != items or self.controller.store.data != saved
+                    or (self.window.start_input.text(), self.window.end_input.text()) != draft):
+                raise RuntimeError("Language switching changed the media or editing state")
+            if self.window.prepare_button.text() != tr("准备已标记的视频（1）"):
+                raise RuntimeError("Language switching did not translate the actual controls")
+        self.stats["language_switch_preserved_state"] = True
+        self.stats["language"] = original
+
+    def check_confirmation(self):
+        """Inspect and cancel the real replacement dialog on synthetic media only."""
+        self.timer.stop()
+        captured = {}
+
+        def inspect_dialog():
+            dialog = QApplication.activeModalWidget()
+            if not isinstance(dialog, QMessageBox):
+                QTimer.singleShot(20, inspect_dialog)
+                return
+            cancel = dialog.button(QMessageBox.StandardButton.Cancel)
+            replace = dialog.button(QMessageBox.StandardButton.Yes)
+            captured.update(title=dialog.windowTitle(), text=dialog.text(),
+                            cancel=cancel.text(), replace=replace.text(),
+                            cancel_is_default=dialog.defaultButton() is cancel)
+            dialog.grab().save(str(self.report.with_name(self.report.stem + "-confirm.jpg")), "JPG", 82)
+            cancel.click()
+
+        QTimer.singleShot(20, inspect_dialog)
+        self.window.replace_button.click()
+        self.timer.start()
+        if (not captured.get("cancel_is_default") or captured.get("cancel") != tr("取消")
+                or captured.get("replace") != tr("替换原片") or self.controller.job):
+            raise RuntimeError("The translated confirmation did not preserve its cancel behavior")
+        if get_language() == "en" and ("permanently removed" not in captured["text"]
+                                         or "no original copy" not in captured["text"]):
+            raise RuntimeError("The English confirmation omitted the replacement consequences")
+        self.stats["replacement_confirmation"] = captured
+        self.window.grab().save(str(self.report.with_name(self.report.stem + "-prepared.jpg")), "JPG", 82)
 
     def start_profile_check(self):
         self.profile_paths = []
@@ -341,6 +408,8 @@ class DesktopCheck(QObject):
 
     def finish(self, passed):
         self.timer.stop()
+        faulthandler.cancel_dump_traceback_later()
+        self.trace_file.close()
         self.stats.update(passed=passed, phase=self.phase, elapsed_seconds=time.monotonic() - self.started)
         self.report.parent.mkdir(parents=True, exist_ok=True)
         self.window.grab().save(str(self.report.with_name(self.report.stem + "-window.jpg")), "JPG", 82)
