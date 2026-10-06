@@ -1,0 +1,10 @@
+work/
+dist/
+tools/
+__pycache__/
+*.spec
+.venv/
+*.log
+application.lock
+marks*.json
+.片段助手缓存/

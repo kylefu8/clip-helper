@@ -1,0 +1,57 @@
+片段助手 v1.0.0 — 第三方组件
+
+以下组件未作源码修改。第三方组件的版权、许可和源代码权利仍由各自许可规定。
+应用源码随 GitHub 仓库发布。用户视频、标记和运行记录不属于分发内容。
+
+PySide6 / Shiboken / Qt 6.11.2
+采用 LGPLv3 分发；许可全文见 LGPL-3.0-only.txt 和 GPL-3.0-only.txt。
+动态库位于 _internal 中，可替换兼容版本。允许为修改这些库而进行调试和逆向工程；
+可以使用公开的应用源码重新运行或打包，以连接修改后的库。
+PySide 源码：https://code.qt.io/cgit/pyside/pyside-setup.git/?h=v6.11.2
+Qt 源码：https://download.qt.io/archive/qt/6.11/6.11.2/single/
+Qt 第三方组件信息：https://doc.qt.io/qt-6/licenses.html
+播放器随 Qt 使用 FFmpeg 7.1.5（LGPLv2.1 或更高版本；许可全文同 GPAC-License.txt）。
+对应源码：https://github.com/FFmpeg/FFmpeg/tree/n7.1.5
+未使用的 Qt Virtual Keyboard 和 Qt PDF 插件不在本分发包中。
+
+FFmpeg / ffprobe 8.0.1-full_build-www.gyan.dev
+GPLv3；许可全文见 FFmpeg-License.txt。原始构建说明和启用的第三方库见 FFmpeg-README.txt。
+对应 FFmpeg 源码：https://github.com/FFmpeg/FFmpeg/tree/894da5ca7d
+构建提供方、构建设置及依赖入口：https://www.gyan.dev/ffmpeg/builds/
+第三方库列表与源仓库：https://github.com/msys2/MINGW-packages
+
+MP4Box / GPAC 26.07-rev0-ga07cbfff
+LGPLv2.1 或更高版本；许可全文见 GPAC-License.txt。
+对应源码：https://github.com/gpac/gpac/tree/a07cbfff
+Windows 构建和依赖：https://github.com/gpac/gpac/wiki/GPAC-Build-Guide-for-Windows
+GPAC 本体采用 LGPL；这套 Windows 运行时还包含以下不同许可的组件：
+- FFmpeg n6.0-34-g3d5edb89e7-20230904（avcodec-60 等）：GPLv3 或更高版本。
+  许可全文见 GPL-3.0-only.txt；实际构建配置和源码入口见 GPAC-FFmpeg-BUILD.txt。
+- OpenSSL 1.1.0f（libcryptoMD / libsslMD）：OpenSSL 和 SSLeay 双许可。
+  本产品包含 OpenSSL Project 开发、用于 OpenSSL Toolkit 的软件（https://www.openssl.org/）。
+  本产品包含 Eric Young（eay@cryptsoft.com）编写的密码学软件。
+  许可全文见 OpenSSL-LICENSE.txt；源码 https://github.com/openssl/openssl/tree/OpenSSL_1_1_0f
+- libcurl 8.9.1：curl 许可；全文见 curl-COPYING.txt。
+  源码 https://github.com/curl/curl/tree/curl-8_9_1
+- OpenSVCDecoder：LGPLv2.1 或更高版本；全文见 OpenSVC-COPYING.txt。
+  源码 https://github.com/gpac-buildbot/opensvc/tree/69ec06db4ca0697b27be61191959e26f5b181d19
+
+libcurl 的运行时还包含以下组件，保留各自版权与许可全文：
+- LibreSSL 3.9.2：LibreSSL-COPYING.txt；https://github.com/libressl/portable/tree/v3.9.2
+- zlib 1.3.1：zlib-README.txt；https://github.com/madler/zlib/tree/v1.3.1
+- brotli 1.1.0：brotli-LICENSE.txt；https://github.com/google/brotli/tree/v1.1.0
+- zstd 1.5.6：zstd-LICENSE.txt（BSD）；https://github.com/facebook/zstd/tree/v1.5.6
+- libpsl 0.21.5：libpsl-COPYING.txt；https://github.com/rockdaboot/libpsl/tree/0.21.5
+- libssh2 1.11.0：libssh2-COPYING.txt；https://github.com/libssh2/libssh2/tree/libssh2-1.11.0
+- nghttp2 1.62.1：nghttp2-COPYING.txt；https://github.com/nghttp2/nghttp2/tree/v1.62.1
+- ngtcp2 1.6.0：ngtcp2-COPYING.txt；https://github.com/ngtcp2/ngtcp2/tree/v1.6.0
+- nghttp3 1.4.0：nghttp3-COPYING.txt；https://github.com/ngtcp2/nghttp3/tree/v1.4.0
+
+Python 3.14.2
+许可全文见 Python-License.txt。
+对应源码：https://www.python.org/downloads/release/python-3142/
+
+PyInstaller 6.22.3
+GPLv2 或更高版本，具有 bootloader 分发例外；运行时钩子采用 Apache-2.0。
+许可和例外全文见 PyInstaller-COPYING.txt。
+对应源码：https://github.com/pyinstaller/pyinstaller/tree/v6.22.3
